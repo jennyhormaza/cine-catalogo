@@ -2,69 +2,64 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useSesion } from '@/app/proveedor';
 import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 
 export default function LoginPage() {
-  const [nombre, setNombre] = useState("");
-  const [email, setEmail] = useState("");
-  const { iniciarSesion } = useSesion();
+  const [correo, setCorreo] = useState('');
+  const [clave, setClave] = useState('');
+  const [mensaje, setMensaje] = useState('');
   const router = useRouter();
 
-  const entrar = (e: React.FormEvent) => {
+  const entrar = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("📝 Botón presionado"); // ← Para ver si funciona
+    setMensaje('Entrando...');
 
-    if (!nombre.trim() || !email.trim()) {
-      alert("⚠️ Escribe tu nombre y correo");
-      return;
+    // ✅ LÍNEA CORREGIDA
+    const { error } = await supabase.auth.signInWithPassword({
+      email: correo,
+      password: clave
+    });
+
+    if (error) {
+      setMensaje('❌ Error: ' + error.message);
+    } else {
+      setMensaje('✅ ¡Bienvenido!');
+      setTimeout(() => router.push('/'), 1000);
     }
-
-    iniciarSesion({ nombre, email });
-    console.log("✅ Sesión iniciada por:", nombre);
-    router.push("/"); // ← Volver al inicio
   };
 
   return (
     <main className="min-h-screen bg-[#07070A] text-white flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
-        <Link href="/" className="inline-block text-yellow-400 mb-6">← Volver al inicio</Link>
-        
-        <h1 className="text-3xl font-black mb-6">👤 Iniciar Sesión</h1>
-        
+      <div className="w-full max-w-md p-8 rounded-2xl border border-white/10 bg-white/5">
+        <h1 className="text-2xl font-bold text-center mb-6">🔐 Iniciar Sesión</h1>
         <form onSubmit={entrar} className="space-y-4">
-          <div>
-            <label className="block text-sm font-bold mb-2">Tu Nombre</label>
-            <input
-              type="text"
-              value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
-              placeholder="Ej: Juan Pérez"
-              className="w-full bg-[#121212] border border-white/10 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-yellow-500/50"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-bold mb-2">Correo Electrónico</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="tu@correo.com"
-              className="w-full bg-[#121212] border border-white/10 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-yellow-500/50"
-            />
-          </div>
-          
+          <input
+            type="email"
+            placeholder="Tu correo"
+            value={correo}
+            onChange={(e) => setCorreo(e.target.value)}
+            className="w-full p-3 rounded-lg bg-white/5 border border-white/10 focus:border-yellow-400 outline-none"
+            required
+          />
+          <input
+            type="password"
+            placeholder="Tu contraseña"
+            value={clave}
+            onChange={(e) => setClave(e.target.value)}
+            className="w-full p-3 rounded-lg bg-white/5 border border-white/10 focus:border-yellow-400 outline-none"
+            required
+          />
           <button
             type="submit"
-            className="w-full bg-[#FBBF24] hover:bg-[#F59E0B] text-black font-bold py-3 rounded-xl transition mt-2"
+            className="w-full py-3 bg-yellow-500 text-black font-bold rounded-lg hover:bg-yellow-400 transition"
           >
-            ✅ Entrar al Catálogo
+            ✅ Entrar
           </button>
         </form>
-        
-        <p className="text-white/40 text-sm mt-6 text-center">
-          Solo necesitas tu nombre y correo. ¡Sin contraseña!
+        {mensaje && <p className="text-center mt-4 text-sm">{mensaje}</p>}
+        <p className="text-center mt-4 text-sm text-gray-400">
+          ¿No tienes cuenta? <Link href="/register" className="text-yellow-400 hover:underline">Regístrate</Link>
         </p>
       </div>
     </main>

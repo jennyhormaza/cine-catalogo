@@ -1,66 +1,93 @@
-"use client";
+'use client'
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import Link from 'next/link'
+import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase'
 
 export default function Navbar() {
-  const pathname = usePathname();
+  const [usuario, setUsuario] = useState<any>(null)
+
+  useEffect(() => {
+    obtenerSesion()
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUsuario(session?.user ?? null)
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [])
+
+  async function obtenerSesion() {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+
+    setUsuario(session?.user ?? null)
+  }
+
+  async function cerrarSesion() {
+    const { error } = await supabase.auth.signOut()
+
+    if (error) {
+      console.error('Error al cerrar sesión:', error)
+      return
+    }
+
+    setUsuario(null)
+  }
 
   return (
-    <nav className="bg-gray-800 border-b border-gray-700 sticky top-0 z-50">
-      <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2">
-          <span className="text-2xl">🎬</span>
-          <span className="text-xl font-bold text-yellow-400">CineCatálogo</span>
+    <nav className="w-full bg-[#09090D] border-b border-white/10">
+      <div className="max-w-7xl mx-auto h-16 px-6 md:px-10 flex items-center justify-between">
+
+        {/* LOGO */}
+        <Link
+          href="/"
+          className="flex items-center gap-2 text-white font-black text-lg hover:text-yellow-400 transition"
+        >
+          <span className="text-xl">🎬</span>
+          <span>CineCatálogo</span>
         </Link>
 
-        <div className="hidden md:flex items-center gap-6">
+        {/* 🔴 SIN SESIÓN */}
+        {!usuario && (
           <Link
             href="/"
-            className={`transition-colors hover:text-yellow-400 ${
-              pathname === "/" ? "text-yellow-400 font-semibold" : "text-gray-300"
-            }`}
+            className="text-sm font-bold text-white/80 hover:text-yellow-400 transition"
           >
-            Inicio
+            INICIO
           </Link>
-          <Link
-            href="/peliculas"
-            className={`transition-colors hover:text-yellow-400 ${
-              pathname.startsWith("/peliculas") ? "text-yellow-400 font-semibold" : "text-gray-300"
-            }`}
-          >
-            Catálogo
-          </Link>
-          <Link
-            href="/favoritos"
-            className={`transition-colors hover:text-yellow-400 ${
-              pathname === "/favoritos" ? "text-yellow-400 font-semibold" : "text-gray-300"
-            }`}
-          >
-            Favoritos
-          </Link>
-        </div>
+        )}
 
-        <div className="flex items-center gap-3">
-          <button className="bg-yellow-500 text-black px-4 py-2 rounded-lg font-bold hover:bg-yellow-400 transition">
-            Registrarse
-          </button>
-          
-          {/* ✅ CORREGIDO: Era un <button> → ahora es <Link href="/login"> */}
-          <Link 
-            href="/login"
-            className="hidden md:block bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition"
-          >
-            Iniciar Sesión
-          </Link>
-        </div>
-      </div>
+        {/* 🟢 CON SESIÓN */}
+        {usuario && (
+          <div className="flex items-center gap-5">
 
-      <div className="md:hidden px-4 pb-3 flex gap-4">
-        <Link href="/" className="text-gray-300 hover:text-yellow-400">Inicio</Link>
-        <Link href="/peliculas" className="text-gray-300 hover:text-yellow-400">Catálogo</Link>
-        <Link href="/favoritos" className="text-gray-300 hover:text-yellow-400">Favoritos</Link>
+            <span className="flex items-center gap-2 text-sm text-white/80">
+              <span className="w-8 h-8 rounded-full bg-yellow-400 text-black flex items-center justify-center">
+                👤
+              </span>
+
+              <span className="hidden sm:block max-w-[180px] truncate">
+                {usuario.email}
+              </span>
+            </span>
+
+            <button
+              onClick={cerrarSesion}
+              className="text-sm font-bold text-red-400 hover:text-red-300 transition"
+            >
+              Cerrar sesión
+            </button>
+
+          </div>
+        )}
+
       </div>
     </nav>
-  );
+  )
 }

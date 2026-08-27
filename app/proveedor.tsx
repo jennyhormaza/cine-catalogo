@@ -1,6 +1,14 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from 'react';
+
+import { supabase } from '@/lib/supabase';
 
 interface Usuario {
   nombre: string;
@@ -18,65 +26,183 @@ interface ContextoSesion {
 
 const Contexto = createContext<ContextoSesion | undefined>(undefined);
 
-export function ProveedorSesion({ children }: { children: ReactNode }) {
+export function ProveedorSesion({
+  children,
+}: {
+  children: ReactNode;
+}) {
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [favoritos, setFavoritos] = useState<number[]>([]);
 
-  // Cargar datos guardados al abrir la página
+  // ==============================
+  // CARGAR SESIÓN DE SUPABASE
+  // ==============================
   useEffect(() => {
-    const datosGuardados = localStorage.getItem('sesion_usuario');
-    const favGuardados = localStorage.getItem('mis_favoritos');
-    
-    if (datosGuardados) setUsuario(JSON.parse(datosGuardados));
-    if (favGuardados) setFavoritos(JSON.parse(favGuardados));
+    const cargarSesion = async () => {
+      const { data, error } = await supabase.auth.getSession();
+
+      if (error) {
+        console.error('Error obteniendo sesión:', error);
+        return;
+      }
+
+      if (data.session?.user) {
+        const user = data.session.user;
+
+        setUsuario({
+          nombre:
+            user.user_metadata?.full_name ||
+            user.user_metadata?.name ||
+            user.email?.split('@')[0] ||
+            'Usuario',
+          email: user.email || '',
+        });
+      } else {
+        setUsuario(null);
+      }
+    };
+
+    cargarSesion();
+
+    // Escuchar cambios de autenticación
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        const user = session.user;
+
+        setUsuario({
+          nombre:
+            user.user_metadata?.full_name ||
+            user.user_metadata?.name ||
+            user.email?.split('@')[0] ||
+            'Usuario',
+          email: user.email || '',
+        });
+      } else {
+        setUsuario(null);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
-  // Guardar sesión
+  // ==============================
+  // CARGAR FAVORITOS
+  // ==============================
+  useEffect(() => {
+    const favoritosGuardados =
+      localStorage.getItem('mis_favoritos');
+
+    if (favoritosGuardados) {
+      try {
+        const datos = JSON.parse(favoritosGuardados);
+
+        if (Array.isArray(datos)) {
+          setFavoritos(datos);
+        }
+      } catch (error) {
+        console.error(
+          'Error cargando favoritos:',
+          error
+        );
+
+        setFavoritos([]);
+      }
+    }
+  }, []);
+
+  // ==============================
+  // INICIAR SESIÓN
+  // ==============================
   const iniciarSesion = (datos: Usuario) => {
     setUsuario(datos);
-    localStorage.setItem('sesion_usuario', JSON.stringify(datos));
   };
 
-  // Cerrar sesión
-  const cerrarSesion = () => {
+  // ==============================
+  // CERRAR SESIÓN
+  // ==============================
+  const cerrarSesion = async () => {
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      console.error(
+        'Error al cerrar sesión:',
+        error
+      );
+      return;
+    }
+
     setUsuario(null);
-    localStorage.removeItem('sesion_usuario');
   };
 
-  // Agregar / Quitar película de favoritos
+  // ==============================
+  // AGREGAR / QUITAR FAVORITO
+  // ==============================
   const alternarFavorito = (idPelicula: number) => {
-    setFavoritos((prev: number[]) => {
-      const nuevos = prev.includes(idPelicula)
-        ? prev.filter((id) => id !== idPelicula) // ❌ Quitar
-        : [...prev, idPelicula]; // ⭐ Agregar
-      
-      localStorage.setItem('mis_favoritos', JSON.stringify(nuevos));
-      return nuevos;
+    if (!usuario) {
+      return;
+    }
+
+    setFavoritos((prev) => {
+      let nuevosFavoritos: number[];
+
+      if (prev.includes(idPelicula)) {
+        nuevosFavoritos = prev.filter(
+          (id) => id !== idPelicula
+        );
+      } else {
+        nuevosFavoritos = [
+          ...prev,
+          idPelicula,
+        ];
+      }
+
+      localStorage.setItem(
+        'mis_favoritos',
+        JSON.stringify(nuevosFavoritos)
+      );
+
+      return nuevosFavoritos;
     });
   };
 
-  // Saber si una película está en favoritos
+  // ==============================
+  // COMPROBAR FAVORITO
+  // ==============================
   const esFavorito = (idPelicula: number) => {
     return favoritos.includes(idPelicula);
   };
 
   return (
-    <Contexto.Provider value={{
-      usuario,
-      favoritos,
-      iniciarSesion,
-      cerrarSesion,
-      alternarFavorito,
-      esFavorito
-    }}>
+    <Contexto.Provider
+      value={{
+        usuario,
+        favoritos,
+        iniciarSesion,
+        cerrarSesion,
+        alternarFavorito,
+        esFavorito,
+      }}
+    >
       {children}
     </Contexto.Provider>
   );
 }
 
-// Función para usar estos datos en cualquier página
+// ==============================
+// HOOK DE SESIÓN
+// ==============================
 export function useSesion() {
   const contexto = useContext(Contexto);
-  if (!contexto) throw new Error("Falta el ProveedorSesion");
+
+  if (!contexto) {
+    throw new Error(
+      'useSesion debe utilizarse dentro de ProveedorSesion'
+    );
+  }
+
   return contexto;
 }
