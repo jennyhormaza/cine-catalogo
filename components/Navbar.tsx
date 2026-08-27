@@ -40,6 +40,28 @@ export default function Navbar() {
     setUsuario(null)
   }
 
+  // INICIALES DEL USUARIO
+  const obtenerIniciales = () => {
+    if (!usuario) return ''
+
+    const nombre =
+      usuario.user_metadata?.full_name ||
+      usuario.user_metadata?.name ||
+      usuario.email?.split('@')[0] ||
+      'Usuario'
+
+    const palabras = nombre.trim().split(/\s+/)
+
+    if (palabras.length >= 2) {
+      return (
+        palabras[0].charAt(0) +
+        palabras[1].charAt(0)
+      ).toUpperCase()
+    }
+
+    return nombre.substring(0, 2).toUpperCase()
+  }
+
   return (
     <nav className="w-full bg-[#09090D] border-b border-white/10">
       <div className="max-w-7xl mx-auto h-16 px-6 md:px-10 flex items-center justify-between">
@@ -68,13 +90,11 @@ export default function Navbar() {
           <div className="flex items-center gap-5">
 
             <span className="flex items-center gap-2 text-sm text-white/80">
-              <span className="w-8 h-8 rounded-full bg-yellow-400 text-black flex items-center justify-center">
-                👤
+
+              <span className="w-8 h-8 rounded-full bg-yellow-400 text-black font-bold flex items-center justify-center">
+                {obtenerIniciales()}
               </span>
 
-              <span className="hidden sm:block max-w-[180px] truncate">
-                {usuario.email}
-              </span>
             </span>
 
             <button

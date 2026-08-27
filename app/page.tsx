@@ -85,14 +85,22 @@ export default function HomePage() {
             🎬 CineCatálogo
           </p>
 
-          <h1 className="text-4xl md:text-6xl font-black leading-tight mb-5">
-            Bienvenido al Catálogo de Películas
-          </h1>
+          {/* =================================================
+              BIENVENIDA SOLO SIN SESIÓN
+          ================================================== */}
 
-          <p className="text-white/70 text-base md:text-lg max-w-2xl mx-auto mb-9">
-            Explora películas, descubre nuevas historias y encuentra
-            tus favoritas en un solo lugar.
-          </p>
+          {!usuario && (
+            <>
+              <h1 className="text-4xl md:text-6xl font-black leading-tight mb-5">
+                Bienvenido al Catálogo de Películas
+              </h1>
+
+              <p className="text-white/70 text-base md:text-lg max-w-2xl mx-auto mb-9">
+                Explora películas, descubre nuevas historias y encuentra
+                tus favoritas en un solo lugar.
+              </p>
+            </>
+          )}
 
           {/* =================================================
               SIN SESIÓN
@@ -196,10 +204,6 @@ export default function HomePage() {
 
         </div>
 
-        {/* =================================================
-            AQUÍ CARGAMOS LAS TENDENCIAS DESDE UNA API
-        ================================================= */}
-
         <Tendencias />
 
       </section>
@@ -273,6 +277,7 @@ function Tendencias() {
   if (cargando) {
     return (
       <div className="py-12 text-center">
+
         <div className="text-4xl mb-4">
           🎬
         </div>
@@ -280,6 +285,7 @@ function Tendencias() {
         <p className="text-white/50">
           Cargando tendencias...
         </p>
+
       </div>
     )
   }
@@ -287,6 +293,7 @@ function Tendencias() {
   if (peliculas.length === 0) {
     return (
       <div className="py-12 text-center">
+
         <div className="text-5xl mb-4">
           🎬
         </div>
@@ -294,6 +301,7 @@ function Tendencias() {
         <p className="text-white/50">
           No se pudieron cargar las películas.
         </p>
+
       </div>
     )
   }

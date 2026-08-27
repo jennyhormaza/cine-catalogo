@@ -57,6 +57,15 @@ export default async function PeliculasPage({
 
       <section className="max-w-7xl mx-auto px-6 md:px-10 pt-12">
 
+        {/* REGRESAR A INICIO */}
+
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 text-yellow-400 hover:text-yellow-300 transition mb-8"
+        >
+          ← Regresar
+        </Link>
+
         <div className="mb-8">
 
           <p className="text-yellow-400 text-xs font-bold uppercase tracking-[0.25em] mb-2">
@@ -171,7 +180,6 @@ export default async function PeliculasPage({
 
                   <article className="overflow-hidden rounded-2xl bg-[#111116] border border-white/5 hover:border-yellow-400/30 hover:-translate-y-2 transition-all duration-500">
 
-
                     {/* POSTER */}
 
                     <div className="relative aspect-[2/3] overflow-hidden bg-zinc-900">
@@ -188,11 +196,9 @@ export default async function PeliculasPage({
                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                       />
 
-
                       {/* DEGRADADO */}
 
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-
 
                       {/* CALIFICACIÓN */}
 
@@ -249,7 +255,6 @@ export default async function PeliculasPage({
             ====================================== */}
 
             <div className="flex flex-wrap items-center justify-center gap-3 mt-14">
-
 
               {/* ANTERIOR */}
 
