@@ -105,7 +105,7 @@ export default function FavoritosPage() {
 
       <div className="max-w-7xl mx-auto">
 
-        {/* REGRESAR AL INICIO */}
+        {/* REGRESAR A INICIO */}
         <Link
           href="/"
           className="inline-flex items-center gap-2 text-yellow-400 hover:text-yellow-300 transition mb-6"
