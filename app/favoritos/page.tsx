@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useSesion } from '@/app/proveedor';
-import { getImageUrl, getMovieById } from '@/lib/tmdb';
+import { getImageUrl } from '@/lib/tmdb';
 import { useState, useEffect } from 'react';
 
 export default function FavoritosPage() {
@@ -29,7 +29,18 @@ export default function FavoritosPage() {
 
       for (const id of favoritos) {
         try {
-          const pelicula = await getMovieById(String(id));
+          const respuesta = await fetch(
+            `/api/peliculas/${id}`
+          );
+
+          if (!respuesta.ok) {
+            console.error(
+              `❌ Error cargando película ${id}`
+            );
+            continue;
+          }
+
+          const pelicula = await respuesta.json();
 
           if (pelicula) {
             resultados.push(pelicula);
@@ -46,10 +57,18 @@ export default function FavoritosPage() {
       setCargando(false);
     };
 
-    cargarFavoritos();
-  }, [favoritos]);
+    if (usuario) {
+      cargarFavoritos();
+    } else {
+      setPeliculas([]);
+      setCargando(false);
+    }
+  }, [favoritos, usuario]);
 
-  // Si NO ha iniciado sesión
+  // ==========================================
+  // SIN SESIÓN
+  // ==========================================
+
   if (!usuario) {
     return (
       <main className="min-h-screen bg-[#07070A] text-white flex items-center justify-center px-4">
@@ -77,7 +96,10 @@ export default function FavoritosPage() {
     );
   }
 
-  // Si SÍ ha iniciado sesión
+  // ==========================================
+  // CON SESIÓN
+  // ==========================================
+
   return (
     <main className="min-h-screen bg-[#07070A] text-white px-6 md:px-10 py-12">
 
@@ -145,8 +167,10 @@ export default function FavoritosPage() {
                   <div className="relative aspect-[2/3] overflow-hidden bg-zinc-900">
 
                     <img
-                      src={getImageUrl(peli.poster_path)}
-                      alt={peli.title}
+                      src={getImageUrl(
+                        peli.poster_path
+                      )}
+                      alt={peli.title || 'Película'}
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                     />
 
@@ -161,7 +185,7 @@ export default function FavoritosPage() {
                   <div className="p-4 pr-14">
 
                     <h3 className="font-bold text-sm md:text-base truncate group-hover:text-yellow-400 transition-colors">
-                      {peli.title}
+                      {peli.title || 'Sin título'}
                     </h3>
 
                     <p className="text-xs text-white/40 mt-1">
@@ -173,9 +197,12 @@ export default function FavoritosPage() {
                 </Link>
 
                 {/* QUITAR DE FAVORITOS */}
+
                 <button
                   type="button"
-                  onClick={() => alternarFavorito(Number(peli.id))}
+                  onClick={() =>
+                    alternarFavorito(Number(peli.id))
+                  }
                   className="absolute bottom-4 right-4 w-9 h-9 rounded-full bg-red-500/20 border border-red-500/20 text-red-400 hover:bg-red-500 hover:text-white transition"
                   title="Quitar de favoritos"
                 >

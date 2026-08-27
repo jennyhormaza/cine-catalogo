@@ -18,6 +18,7 @@ interface Usuario {
 interface ContextoSesion {
   usuario: Usuario | null;
   favoritos: number[];
+  cargandoSesion: boolean;
   iniciarSesion: (datos: Usuario) => void;
   cerrarSesion: () => void;
   alternarFavorito: (idPelicula: number) => void;
@@ -33,58 +34,103 @@ export function ProveedorSesion({
 }) {
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [favoritos, setFavoritos] = useState<number[]>([]);
+  const [cargandoSesion, setCargandoSesion] = useState(true);
 
   // ==============================
   // CARGAR SESIÓN DE SUPABASE
   // ==============================
+
   useEffect(() => {
+    let activo = true;
+
     const cargarSesion = async () => {
-      const { data, error } = await supabase.auth.getSession();
+      try {
+        const { data, error } =
+          await supabase.auth.getSession();
 
-      if (error) {
-        console.error('Error obteniendo sesión:', error);
-        return;
-      }
+        if (error) {
+          console.error(
+            'Error obteniendo sesión:',
+            error
+          );
 
-      if (data.session?.user) {
-        const user = data.session.user;
+          if (activo) {
+            setUsuario(null);
+            setCargandoSesion(false);
+          }
 
-        setUsuario({
-          nombre:
-            user.user_metadata?.full_name ||
-            user.user_metadata?.name ||
-            user.email?.split('@')[0] ||
-            'Usuario',
-          email: user.email || '',
-        });
-      } else {
-        setUsuario(null);
+          return;
+        }
+
+        if (data.session?.user) {
+          const user = data.session.user;
+
+          if (activo) {
+            setUsuario({
+              nombre:
+                user.user_metadata?.full_name ||
+                user.user_metadata?.name ||
+                user.email?.split('@')[0] ||
+                'Usuario',
+
+              email: user.email || '',
+            });
+          }
+        } else {
+          if (activo) {
+            setUsuario(null);
+          }
+        }
+      } catch (error) {
+        console.error(
+          'Error cargando sesión:',
+          error
+        );
+
+        if (activo) {
+          setUsuario(null);
+        }
+      } finally {
+        if (activo) {
+          setCargandoSesion(false);
+        }
       }
     };
 
     cargarSesion();
 
-    // Escuchar cambios de autenticación
+    // ==============================
+    // ESCUCHAR CAMBIOS DE SESIÓN
+    // ==============================
+
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        const user = session.user;
+    } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        if (!activo) return;
 
-        setUsuario({
-          nombre:
-            user.user_metadata?.full_name ||
-            user.user_metadata?.name ||
-            user.email?.split('@')[0] ||
-            'Usuario',
-          email: user.email || '',
-        });
-      } else {
-        setUsuario(null);
+        if (session?.user) {
+          const user = session.user;
+
+          setUsuario({
+            nombre:
+              user.user_metadata?.full_name ||
+              user.user_metadata?.name ||
+              user.email?.split('@')[0] ||
+              'Usuario',
+
+            email: user.email || '',
+          });
+        } else {
+          setUsuario(null);
+        }
+
+        setCargandoSesion(false);
       }
-    });
+    );
 
     return () => {
+      activo = false;
       subscription.unsubscribe();
     };
   }, []);
@@ -92,46 +138,58 @@ export function ProveedorSesion({
   // ==============================
   // CARGAR FAVORITOS
   // ==============================
+
   useEffect(() => {
-    const favoritosGuardados =
-      localStorage.getItem('mis_favoritos');
+    try {
+      const favoritosGuardados =
+        localStorage.getItem('mis_favoritos');
 
-    if (favoritosGuardados) {
-      try {
-        const datos = JSON.parse(favoritosGuardados);
-
-        if (Array.isArray(datos)) {
-          setFavoritos(datos);
-        }
-      } catch (error) {
-        console.error(
-          'Error cargando favoritos:',
-          error
+      if (favoritosGuardados) {
+        const datos = JSON.parse(
+          favoritosGuardados
         );
 
-        setFavoritos([]);
+        if (Array.isArray(datos)) {
+          setFavoritos(
+            datos.map(Number).filter(
+              (id) => !Number.isNaN(id)
+            )
+          );
+        }
       }
+    } catch (error) {
+      console.error(
+        'Error cargando favoritos:',
+        error
+      );
+
+      setFavoritos([]);
     }
   }, []);
 
   // ==============================
   // INICIAR SESIÓN
   // ==============================
+
   const iniciarSesion = (datos: Usuario) => {
     setUsuario(datos);
+    setCargandoSesion(false);
   };
 
   // ==============================
   // CERRAR SESIÓN
   // ==============================
+
   const cerrarSesion = async () => {
-    const { error } = await supabase.auth.signOut();
+    const { error } =
+      await supabase.auth.signOut();
 
     if (error) {
       console.error(
         'Error al cerrar sesión:',
         error
       );
+
       return;
     }
 
@@ -141,7 +199,10 @@ export function ProveedorSesion({
   // ==============================
   // AGREGAR / QUITAR FAVORITO
   // ==============================
-  const alternarFavorito = (idPelicula: number) => {
+
+  const alternarFavorito = (
+    idPelicula: number
+  ) => {
     if (!usuario) {
       return;
     }
@@ -172,7 +233,10 @@ export function ProveedorSesion({
   // ==============================
   // COMPROBAR FAVORITO
   // ==============================
-  const esFavorito = (idPelicula: number) => {
+
+  const esFavorito = (
+    idPelicula: number
+  ) => {
     return favoritos.includes(idPelicula);
   };
 
@@ -181,6 +245,7 @@ export function ProveedorSesion({
       value={{
         usuario,
         favoritos,
+        cargandoSesion,
         iniciarSesion,
         cerrarSesion,
         alternarFavorito,
@@ -195,6 +260,7 @@ export function ProveedorSesion({
 // ==============================
 // HOOK DE SESIÓN
 // ==============================
+
 export function useSesion() {
   const contexto = useContext(Contexto);
 

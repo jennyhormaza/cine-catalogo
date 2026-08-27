@@ -1,191 +1,310 @@
-import Link from 'next/link';
-import { getMovieById, getImageUrl } from '@/lib/tmdb';
+import Link from 'next/link'
+import {
+  getMovies,
+  searchMovies,
+  getImageUrl,
+} from '@/lib/tmdb'
 
-export default async function DetallePeliculaPage({
-  params,
+export default async function PeliculasPage({
+  searchParams,
 }: {
-  params: Promise<{ id: string }>;
+  searchParams: Promise<{
+    buscar?: string
+    page?: string
+  }>
 }) {
-  const { id } = await params;
+  const params = await searchParams
 
-  console.log('🔍 Buscando película con ID:', id);
+  const buscar = params.buscar?.trim() || ''
 
-  const pelicula = await getMovieById(id);
+  const paginaActual = Math.max(
+    1,
+    Number(params.page) || 1
+  )
 
-  console.log(
-    '📦 Datos recibidos:',
-    pelicula ? '✅ SÍ llegó' : '❌ NULL'
-  );
+  // ==========================================
+  // OBTENER PELÍCULAS
+  // ==========================================
 
-  if (!pelicula) {
-    return (
-      <main className="min-h-screen bg-[#07070A] text-white flex items-center justify-center px-6">
-        <div className="text-center">
-          <div className="text-6xl mb-6">🎬</div>
+  let datos
 
-          <h1 className="text-2xl font-bold mb-4">
-            Película no encontrada
-          </h1>
-
-          <p className="text-white/50 mb-6">
-            No pudimos encontrar la película con ID: {id}
-          </p>
-
-          <Link
-            href="/peliculas"
-            className="inline-block bg-yellow-400 hover:bg-yellow-300 text-black font-bold px-6 py-3 rounded-xl transition"
-          >
-            ← Volver al catálogo
-          </Link>
-        </div>
-      </main>
-    );
+  if (buscar) {
+    datos = await searchMovies(
+      buscar,
+      paginaActual
+    )
+  } else {
+    datos = await getMovies(
+      paginaActual
+    )
   }
+
+  const peliculas = datos.results || []
+
+  // TMDB permite muchas páginas.
+  // Limitamos a 500 por seguridad.
+  const totalPaginas = Math.min(
+    datos.total_pages || 1,
+    500
+  )
 
   return (
     <main className="min-h-screen bg-[#07070A] text-white">
 
-      {/* VOLVER */}
-      <div className="px-6 md:px-10 pt-8 max-w-6xl mx-auto">
-        <Link
-          href="/peliculas"
-          className="inline-flex items-center gap-2 text-yellow-400 hover:text-yellow-300 transition"
-        >
-          ← Volver al catálogo
-        </Link>
-      </div>
+      {/* ==========================================
+          ENCABEZADO
+      ========================================== */}
 
-      {/* CONTENIDO */}
-      <div className="px-6 md:px-10 py-10 pb-16 max-w-6xl mx-auto">
+      <section className="max-w-7xl mx-auto px-6 md:px-10 pt-12">
 
-        <div className="grid md:grid-cols-[320px_1fr] gap-10">
+        <div className="mb-8">
 
-          {/* POSTER */}
-          <div className="flex justify-center">
+          <p className="text-yellow-400 text-xs font-bold uppercase tracking-[0.25em] mb-2">
+            🎬 CineCatálogo
+          </p>
 
-            <div className="w-full max-w-[300px] rounded-2xl overflow-hidden shadow-2xl border border-white/10 bg-[#111116]">
+          <h1 className="text-4xl md:text-5xl font-black">
+            {buscar
+              ? `Resultados para "${buscar}"`
+              : 'Catálogo de Películas'}
+          </h1>
 
-              <img
-                src={getImageUrl(
-                  pelicula.poster_path,
-                  'w500'
-                )}
-                alt={pelicula.title || 'Película'}
-                className="w-full h-auto object-cover"
-              />
-
-            </div>
-
-          </div>
-
-          {/* INFORMACIÓN */}
-          <div className="space-y-6">
-
-            {/* TÍTULO */}
-            <div>
-              <h1 className="text-3xl md:text-5xl font-black leading-tight">
-                {pelicula.title}
-              </h1>
-
-              {pelicula.tagline && (
-                <p className="text-lg text-white/50 italic mt-3">
-                  {pelicula.tagline}
-                </p>
-              )}
-            </div>
-
-            {/* FAVORITOS */}
-            <Link
-              href="/login"
-              className="inline-flex items-center gap-2 px-5 py-3 rounded-xl font-bold bg-yellow-400 text-black hover:bg-yellow-300 transition"
-            >
-              🤍 Agregar a Favoritos
-            </Link>
-
-            {/* DATOS */}
-            <div className="flex flex-wrap gap-3">
-
-              <span className="px-4 py-2 bg-yellow-400/20 text-yellow-400 rounded-full text-sm font-bold">
-                ⭐ {pelicula.vote_average?.toFixed(1) || 'N/A'}
-              </span>
-
-              <span className="px-4 py-2 bg-white/10 rounded-full text-sm">
-                📅 {pelicula.release_date?.substring(0, 4) || 'N/A'}
-              </span>
-
-              <span className="px-4 py-2 bg-white/10 rounded-full text-sm">
-                ⏱️ {pelicula.runtime || 'N/A'} min
-              </span>
-
-            </div>
-
-            {/* GÉNEROS */}
-            {pelicula.genres &&
-              pelicula.genres.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-
-                  {pelicula.genres.map(
-                    (genero: {
-                      id: number;
-                      name: string;
-                    }) => (
-                      <span
-                        key={genero.id}
-                        className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-full text-xs text-white/70"
-                      >
-                        {genero.name}
-                      </span>
-                    )
-                  )}
-
-                </div>
-              )}
-
-            {/* SINOPSIS */}
-            <div>
-
-              <h2 className="text-xl font-bold mb-3">
-                Sinopsis
-              </h2>
-
-              <p className="text-white/70 leading-relaxed">
-                {pelicula.overview ||
-                  'Sin sinopsis disponible.'}
-              </p>
-
-            </div>
-
-            {/* INFORMACIÓN EXTRA */}
-            <div className="grid sm:grid-cols-2 gap-4 pt-4">
-
-              <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-                <p className="text-white/40 text-sm mb-1">
-                  Idioma original
-                </p>
-
-                <p className="font-bold">
-                  {pelicula.original_language?.toUpperCase() ||
-                    'N/A'}
-                </p>
-              </div>
-
-              <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-                <p className="text-white/40 text-sm mb-1">
-                  Popularidad
-                </p>
-
-                <p className="font-bold">
-                  {pelicula.popularity?.toFixed(0) || 'N/A'}
-                </p>
-              </div>
-
-            </div>
-
-          </div>
+          <p className="text-white/50 mt-3">
+            {buscar
+              ? 'Películas encontradas para tu búsqueda.'
+              : 'Explora todas las películas disponibles en nuestro catálogo.'}
+          </p>
 
         </div>
 
-      </div>
+
+        {/* ==========================================
+            BUSCADOR
+        ========================================== */}
+
+        <form
+          action="/peliculas"
+          method="GET"
+          className="flex w-full max-w-2xl mb-12"
+        >
+
+          <input
+            type="text"
+            name="buscar"
+            defaultValue={buscar}
+            placeholder="🔍 Buscar una película..."
+            className="flex-1 bg-white/10 border border-white/20 text-white placeholder:text-white/40 px-5 py-3.5 rounded-l-full outline-none focus:border-yellow-400 transition"
+          />
+
+          <button
+            type="submit"
+            className="bg-yellow-400 hover:bg-yellow-300 text-black font-bold px-7 py-3.5 rounded-r-full transition"
+          >
+            Buscar
+          </button>
+
+        </form>
+
+      </section>
+
+
+      {/* ==========================================
+          CATÁLOGO
+      ========================================== */}
+
+      <section className="max-w-7xl mx-auto px-6 md:px-10 pb-16">
+
+        {peliculas.length === 0 ? (
+
+          <div className="py-20 text-center">
+
+            <div className="text-6xl mb-5">
+              🎬
+            </div>
+
+            <h2 className="text-2xl font-bold mb-3">
+              No encontramos películas
+            </h2>
+
+            <p className="text-white/50">
+              Intenta buscar con otro nombre.
+            </p>
+
+          </div>
+
+        ) : (
+
+          <>
+
+            {/* ======================================
+                INFORMACIÓN DE PÁGINA
+            ====================================== */}
+
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+
+              <p className="text-white/40 text-sm">
+                Página {paginaActual} de {totalPaginas}
+              </p>
+
+              {buscar && (
+                <p className="text-yellow-400/70 text-sm">
+                  🔎 Búsqueda: {buscar}
+                </p>
+              )}
+
+            </div>
+
+
+            {/* ======================================
+                PELÍCULAS
+            ====================================== */}
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-5">
+
+              {peliculas.map((peli: any) => (
+
+                <Link
+                  href={`/peliculas/${peli.id}`}
+                  key={peli.id}
+                  className="group"
+                >
+
+                  <article className="overflow-hidden rounded-2xl bg-[#111116] border border-white/5 hover:border-yellow-400/30 hover:-translate-y-2 transition-all duration-500">
+
+
+                    {/* POSTER */}
+
+                    <div className="relative aspect-[2/3] overflow-hidden bg-zinc-900">
+
+                      <img
+                        src={getImageUrl(
+                          peli.poster_path,
+                          'w500'
+                        )}
+                        alt={
+                          peli.title ||
+                          'Película'
+                        }
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                      />
+
+
+                      {/* DEGRADADO */}
+
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+
+
+                      {/* CALIFICACIÓN */}
+
+                      <div className="absolute top-2 right-2 bg-black/75 backdrop-blur-md px-2 py-1 rounded-lg text-[11px] font-bold">
+
+                        ⭐{' '}
+
+                        {peli.vote_average
+                          ? peli.vote_average.toFixed(1)
+                          : 'N/A'}
+
+                      </div>
+
+                    </div>
+
+
+                    {/* INFORMACIÓN */}
+
+                    <div className="p-3">
+
+                      <h2 className="font-bold text-sm truncate group-hover:text-yellow-400 transition">
+
+                        {peli.title ||
+                          peli.name ||
+                          'Sin título'}
+
+                      </h2>
+
+
+                      <p className="text-xs text-white/40 mt-1">
+
+                        {peli.release_date
+                          ? peli.release_date.substring(
+                              0,
+                              4
+                            )
+                          : 'N/A'}
+
+                      </p>
+
+                    </div>
+
+                  </article>
+
+                </Link>
+
+              ))}
+
+            </div>
+
+
+            {/* ======================================
+                PAGINACIÓN
+            ====================================== */}
+
+            <div className="flex flex-wrap items-center justify-center gap-3 mt-14">
+
+
+              {/* ANTERIOR */}
+
+              {paginaActual > 1 && (
+
+                <Link
+                  href={
+                    buscar
+                      ? `/peliculas?buscar=${encodeURIComponent(
+                          buscar
+                        )}&page=${paginaActual - 1}`
+                      : `/peliculas?page=${paginaActual - 1}`
+                  }
+                  className="px-5 py-3 rounded-xl bg-white/10 border border-white/10 hover:bg-white/20 transition font-bold"
+                >
+                  ← Anterior
+                </Link>
+
+              )}
+
+
+              {/* PÁGINA ACTUAL */}
+
+              <span className="px-5 py-3 rounded-xl bg-yellow-400 text-black font-black">
+                {paginaActual}
+              </span>
+
+
+              {/* SIGUIENTE */}
+
+              {paginaActual < totalPaginas && (
+
+                <Link
+                  href={
+                    buscar
+                      ? `/peliculas?buscar=${encodeURIComponent(
+                          buscar
+                        )}&page=${paginaActual + 1}`
+                      : `/peliculas?page=${paginaActual + 1}`
+                  }
+                  className="px-5 py-3 rounded-xl bg-white/10 border border-white/10 hover:bg-white/20 transition font-bold"
+                >
+                  Siguiente →
+                </Link>
+
+              )}
+
+            </div>
+
+          </>
+
+        )}
+
+      </section>
+
     </main>
-  );
+  )
 }

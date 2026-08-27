@@ -1,11 +1,65 @@
 const API_KEY = process.env.TMDB_API_KEY;
+
 const BASE_URL =
   process.env.TMDB_BASE_URL || 'https://api.themoviedb.org/3';
 
-console.log('🔑 Clave API:', API_KEY ? '✅ SÍ existe' : '❌ NO existe');
+console.log(
+  '🔑 Clave API:',
+  API_KEY ? '✅ SÍ existe' : '❌ NO existe'
+);
+
 
 // ============================================
-// OBTENER PELÍCULAS POPULARES
+// PELÍCULAS EN TENDENCIA
+// ============================================
+
+export async function getTrendingMovies() {
+  if (!API_KEY) {
+    console.error('❌ Falta TMDB_API_KEY en .env.local');
+    return [];
+  }
+
+  try {
+    const respuesta = await fetch(
+      `${BASE_URL}/trending/movie/week?api_key=${API_KEY}&language=es-ES`,
+      {
+        next: {
+          revalidate: 3600,
+        },
+      }
+    );
+
+    if (!respuesta.ok) {
+      console.error(
+        '❌ Error obteniendo tendencias:',
+        respuesta.status
+      );
+
+      return [];
+    }
+
+    const datos = await respuesta.json();
+
+    console.log(
+      '🔥 Tendencias encontradas:',
+      datos.results?.length || 0
+    );
+
+    return datos.results || [];
+
+  } catch (error) {
+    console.error(
+      '🔥 Error obteniendo películas en tendencia:',
+      error
+    );
+
+    return [];
+  }
+}
+
+
+// ============================================
+// PELÍCULAS POPULARES
 // ============================================
 
 export async function getPopularMovies() {
@@ -36,26 +90,94 @@ export async function getPopularMovies() {
     const datos = await respuesta.json();
 
     return datos.results || [];
+
   } catch (error) {
-    console.error('🔥 Error obteniendo películas populares:', error);
+    console.error(
+      '🔥 Error obteniendo películas populares:',
+      error
+    );
 
     return [];
   }
 }
 
+
 // ============================================
-// OBTENER UNA PELÍCULA POR ID
+// CATÁLOGO DE PELÍCULAS
 // ============================================
 
-export async function getMovieById(id: string | number) {
+export async function getMovies(page: number = 1) {
+  if (!API_KEY) {
+    console.error('❌ Falta TMDB_API_KEY en .env.local');
+
+    return {
+      results: [],
+      total_pages: 0,
+      total_results: 0,
+    };
+  }
+
+  try {
+    const pagina = Math.max(1, page);
+
+    const respuesta = await fetch(
+      `${BASE_URL}/discover/movie?api_key=${API_KEY}&language=es-ES&sort_by=popularity.desc&page=${pagina}&include_adult=false`,
+      {
+        next: {
+          revalidate: 3600,
+        },
+      }
+    );
+
+    if (!respuesta.ok) {
+      console.error(
+        '❌ Error obteniendo catálogo:',
+        respuesta.status
+      );
+
+      return {
+        results: [],
+        total_pages: 0,
+        total_results: 0,
+      };
+    }
+
+    const datos = await respuesta.json();
+
+    return {
+      results: datos.results || [],
+      total_pages: datos.total_pages || 0,
+      total_results: datos.total_results || 0,
+    };
+
+  } catch (error) {
+    console.error(
+      '🔥 Error obteniendo catálogo:',
+      error
+    );
+
+    return {
+      results: [],
+      total_pages: 0,
+      total_results: 0,
+    };
+  }
+}
+
+
+// ============================================
+// UNA PELÍCULA POR ID
+// ============================================
+
+export async function getMovieById(
+  id: string | number
+) {
   if (!API_KEY) {
     console.error('❌ Falta TMDB_API_KEY en .env.local');
     return null;
   }
 
   try {
-    console.log('🔍 Buscando película con ID:', id);
-
     const respuesta = await fetch(
       `${BASE_URL}/movie/${id}?api_key=${API_KEY}&language=es-ES`,
       {
@@ -76,18 +198,21 @@ export async function getMovieById(id: string | number) {
 
     const pelicula = await respuesta.json();
 
-    console.log('✅ Película encontrada:', pelicula.title);
-
     return pelicula;
+
   } catch (error) {
-    console.error('🔥 Error obteniendo película:', error);
+    console.error(
+      '🔥 Error obteniendo película:',
+      error
+    );
 
     return null;
   }
 }
 
+
 // ============================================
-// URL DE IMÁGENES
+// IMÁGENES
 // ============================================
 
 export function getImageUrl(
@@ -101,25 +226,40 @@ export function getImageUrl(
   return `https://image.tmdb.org/t/p/${size}${path}`;
 }
 
+
 // ============================================
 // BUSCAR PELÍCULAS
 // ============================================
 
-export async function searchMovies(query: string) {
+export async function searchMovies(
+  query: string,
+  page: number = 1
+) {
   if (!API_KEY) {
     console.error('❌ Falta TMDB_API_KEY en .env.local');
-    return [];
+
+    return {
+      results: [],
+      total_pages: 0,
+      total_results: 0,
+    };
   }
 
   if (!query.trim()) {
-    return [];
+    return {
+      results: [],
+      total_pages: 0,
+      total_results: 0,
+    };
   }
 
   try {
+    const pagina = Math.max(1, page);
+
     const respuesta = await fetch(
       `${BASE_URL}/search/movie?api_key=${API_KEY}&language=es-ES&query=${encodeURIComponent(
         query
-      )}&page=1&include_adult=false`,
+      )}&page=${pagina}&include_adult=false`,
       {
         next: {
           revalidate: 300,
@@ -133,15 +273,31 @@ export async function searchMovies(query: string) {
         respuesta.status
       );
 
-      return [];
+      return {
+        results: [],
+        total_pages: 0,
+        total_results: 0,
+      };
     }
 
     const datos = await respuesta.json();
 
-    return datos.results || [];
-  } catch (error) {
-    console.error('🔥 Error buscando películas:', error);
+    return {
+      results: datos.results || [],
+      total_pages: datos.total_pages || 0,
+      total_results: datos.total_results || 0,
+    };
 
-    return [];
+  } catch (error) {
+    console.error(
+      '🔥 Error buscando películas:',
+      error
+    );
+
+    return {
+      results: [],
+      total_pages: 0,
+      total_results: 0,
+    };
   }
 }

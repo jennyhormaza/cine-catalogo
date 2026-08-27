@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { getMovieById, getImageUrl } from '@/lib/tmdb';
+import BotonFavorito from '@/components/BotonFavorito';
 
 export default async function DetallePeliculaPage({
   params,
@@ -103,12 +104,9 @@ export default async function DetallePeliculaPage({
             </div>
 
             {/* FAVORITOS */}
-            <Link
-              href="/login"
-              className="inline-flex items-center gap-2 px-5 py-3 rounded-xl font-bold bg-yellow-400 text-black hover:bg-yellow-300 transition"
-            >
-              🤍 Agregar a Favoritos
-            </Link>
+            <BotonFavorito
+              peliculaId={Number(pelicula.id)}
+            />
 
             {/* INFORMACIÓN PRINCIPAL */}
             <div className="flex flex-wrap gap-3">
