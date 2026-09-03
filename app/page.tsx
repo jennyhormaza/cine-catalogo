@@ -1,5 +1,4 @@
 'use client'
-
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { getImageUrl } from '@/lib/tmdb'
@@ -8,6 +7,7 @@ import { supabase } from '@/lib/supabase'
 export default function HomePage() {
   const [peliculas, setPeliculas] = useState<any[]>([])
   const [usuario, setUsuario] = useState<any>(null)
+  const [rolUsuario, setRolUsuario] = useState<string>('usuario')
   const [cargando, setCargando] = useState(true)
 
   useEffect(() => {
@@ -16,11 +16,19 @@ export default function HomePage() {
 
   async function cargarUsuario() {
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-
+      const { data: { session } } = await supabase.auth.getSession()
       setUsuario(session?.user ?? null)
+
+      // ✅ OBTENER EL ROL DESDE LA TABLA profiles
+      if (session?.user?.id) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single()
+        
+        setRolUsuario(data?.role || 'usuario')
+      }
     } catch (error) {
       console.error('Error obteniendo usuario:', error)
     } finally {
@@ -31,7 +39,6 @@ export default function HomePage() {
   // =====================================================
   // CARGANDO
   // =====================================================
-
   if (cargando) {
     return (
       <main className="min-h-screen bg-[#07070A] text-white">
@@ -51,13 +58,10 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen bg-[#07070A] text-white">
-
       {/* =====================================================
           HERO
       ====================================================== */}
-
       <section className="relative w-full min-h-[460px] flex items-center justify-center overflow-hidden bg-black">
-
         {/* FONDO */}
         <div
           className="absolute inset-0 bg-cover bg-center"
@@ -66,16 +70,12 @@ export default function HomePage() {
               "url('https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=2000')",
           }}
         />
-
         {/* OSCURECER */}
         <div className="absolute inset-0 bg-black/70 backdrop-blur-[3px]" />
-
         {/* DEGRADADO */}
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-black/40" />
-
         {/* CONTENIDO */}
         <div className="relative z-10 text-center px-6 max-w-5xl">
-
           <p className="text-yellow-400 text-xs md:text-sm font-bold uppercase tracking-[0.3em] mb-4">
             🎬 CineCatálogo
           </p>
@@ -83,7 +83,6 @@ export default function HomePage() {
           {/* =================================================
               BIENVENIDA SOLO SIN SESIÓN
           ================================================== */}
-
           {!usuario && (
             <>
               <h1 className="text-4xl md:text-6xl font-black leading-tight mb-5">
@@ -99,7 +98,6 @@ export default function HomePage() {
           {/* =================================================
               SIN SESIÓN — Botones: Crear cuenta / Iniciar sesión
           ================================================== */}
-
           {!usuario && (
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               <Link
@@ -118,13 +116,12 @@ export default function HomePage() {
           )}
 
           {/* =================================================
-              CON SESIÓN — Buscador + Catálogo + Favoritos + Agregar + Mis Creadas
+              CON SESIÓN — Buscador + Catálogo + Favoritos
           ================================================== */}
-
           {usuario && (
             <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-4">
               
-              {/* BUSCADOR */}
+              {/* BUSCADOR — TODOS lo ven */}
               <form
                 action="/peliculas"
                 method="GET"
@@ -144,7 +141,7 @@ export default function HomePage() {
                 </button>
               </form>
 
-              {/* CATÁLOGO */}
+              {/* CATÁLOGO — TODOS lo ven */}
               <Link
                 href="/peliculas"
                 className="border border-white/20 bg-white/10 hover:bg-white/20 text-white font-bold px-7 py-3 rounded-full transition whitespace-nowrap"
@@ -152,7 +149,7 @@ export default function HomePage() {
                 🎬 Catálogo
               </Link>
 
-              {/* FAVORITOS */}
+              {/* FAVORITOS — TODOS lo ven */}
               <Link
                 href="/favoritos"
                 className="border border-white/20 bg-white/10 hover:bg-white/20 text-white font-bold px-7 py-3 rounded-full transition whitespace-nowrap"
@@ -160,35 +157,34 @@ export default function HomePage() {
                 ⭐ Favoritos
               </Link>
 
-              {/* ➕ AGREGAR PELÍCULA */}
-              <Link
-                href="/nueva-pelicula"
-                className="bg-green-600 hover:bg-green-500 text-white font-bold px-7 py-3 rounded-full transition whitespace-nowrap"
-              >
-                ➕ Agregar Película
-              </Link>
+              {/* ✅ AGREGAR PELÍCULA — SOLO ADMINISTRADOR */}
+              {rolUsuario === 'administrador' && (
+                <Link
+                  href="/nueva-pelicula"
+                  className="bg-green-600 hover:bg-green-500 text-white font-bold px-7 py-3 rounded-full transition whitespace-nowrap"
+                >
+                  ➕ Agregar Película
+                </Link>
+              )}
 
-              {/* ✅ MIS PELÍCULAS CREADAS — NUEVO BOTÓN */}
-              <Link
-                href="/mis-peliculas-creadas"
-                className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-7 py-3 rounded-full transition whitespace-nowrap"
-              >
-                📂 Mis Películas Creadas
-              </Link>
-
+              {/* ✅ MIS PELÍCULAS CREADAS — SOLO ADMINISTRADOR */}
+              {rolUsuario === 'administrador' && (
+                <Link
+                  href="/mis-peliculas-creadas"
+                  className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-7 py-3 rounded-full transition whitespace-nowrap"
+                >
+                  📂 Mis Películas Creadas
+                </Link>
+              )}
             </div>
           )}
-
         </div>
-
       </section>
 
       {/* =====================================================
           TENDENCIAS
       ====================================================== */}
-
       <section className="max-w-7xl mx-auto px-6 md:px-10 py-16">
-
         <div className="mb-8">
           <p className="text-yellow-400 text-xs font-bold uppercase tracking-[0.25em] mb-2">
             Lo más visto
@@ -200,15 +196,12 @@ export default function HomePage() {
             Algunas de las películas más populares del momento.
           </p>
         </div>
-
         <Tendencias />
-
       </section>
 
       {/* =====================================================
           INFORMACIÓN FINAL
       ====================================================== */}
-
       <section className="px-6 md:px-10 pb-20">
         <div className="max-w-7xl mx-auto rounded-3xl border border-white/10 bg-white/[0.03] p-8 md:p-12">
           <p className="text-yellow-400 text-xs font-bold uppercase tracking-[0.25em] mb-3">
@@ -224,7 +217,6 @@ export default function HomePage() {
           </p>
         </div>
       </section>
-
     </main>
   )
 }
@@ -232,7 +224,6 @@ export default function HomePage() {
 // =====================================================
 // COMPONENTE TENDENCIAS
 // =====================================================
-
 function Tendencias() {
   const [peliculas, setPeliculas] = useState<any[]>([])
   const [cargando, setCargando] = useState(true)
@@ -244,18 +235,13 @@ function Tendencias() {
   async function cargarTendencias() {
     try {
       const respuesta = await fetch('/api/tendencias')
-
       if (!respuesta.ok) {
         throw new Error('Error obteniendo tendencias')
       }
-
       const datos = await respuesta.json()
       setPeliculas(datos.slice(0, 6))
     } catch (error) {
-      console.error(
-        '❌ Error cargando tendencias:',
-        error
-      )
+      console.error('❌ Error cargando tendencias:', error)
       setPeliculas([])
     } finally {
       setCargando(false)
@@ -301,10 +287,7 @@ function Tendencias() {
             {/* POSTER */}
             <div className="relative aspect-[2/3] overflow-hidden bg-zinc-900">
               <img
-                src={getImageUrl(
-                  peli.poster_path,
-                  'w500'
-                )}
+                src={getImageUrl(peli.poster_path, 'w500')}
                 alt={peli.title || 'Película'}
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
               />
