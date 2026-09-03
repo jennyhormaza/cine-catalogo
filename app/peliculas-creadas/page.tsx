@@ -89,8 +89,7 @@ export default function PeliculasCreadasPage() {
                   </p>
                   
                   {/* ✅ BOTÓN DE FAVORITOS — TODOS PUEDEN GUARDAR */}
-                  <BotonFavorito peliculaId={p.id} />
-                </div>
+<BotonFavorito peliculaId={Number(p.id)} />                </div>
               </div>
             ))}
           </div>
