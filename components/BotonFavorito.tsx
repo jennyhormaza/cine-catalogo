@@ -1,5 +1,4 @@
 'use client';
-
 import { useSesion } from '@/app/proveedor';
 
 export default function BotonFavorito({
@@ -16,11 +15,12 @@ export default function BotonFavorito({
   const esFavorito = favoritos.includes(peliculaId);
 
   async function manejarFavorito() {
+    // ✅ Si NO hay sesión → llevar a iniciar sesión
     if (!usuario) {
       window.location.href = '/login';
       return;
     }
-
+    // ✅ Si hay sesión → agregar o quitar de favoritos
     await alternarFavorito(peliculaId);
   }
 

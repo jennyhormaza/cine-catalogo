@@ -1,5 +1,4 @@
 'use client';
-
 import {
   createContext,
   useContext,
@@ -7,7 +6,6 @@ import {
   useEffect,
   ReactNode,
 } from 'react';
-
 import { supabase } from '@/lib/supabase';
 
 interface Usuario {
@@ -37,34 +35,27 @@ export function ProveedorSesion({
   const [cargandoSesion, setCargandoSesion] = useState(true);
 
   // ==============================
-  // CARGAR SESIÓN DE SUPABASE
+  // CARGAR SESIÓN + FAVORITOS DE SUPABASE
   // ==============================
-
   useEffect(() => {
     let activo = true;
 
-    const cargarSesion = async () => {
+    const cargarTodo = async () => {
       try {
-        const { data, error } =
-          await supabase.auth.getSession();
-
+        // 1. CARGAR SESIÓN
+        const { data, error } = await supabase.auth.getSession();
         if (error) {
-          console.error(
-            'Error obteniendo sesión:',
-            error
-          );
-
+          console.error('Error obteniendo sesión:', error);
           if (activo) {
             setUsuario(null);
+            setFavoritos([]);
             setCargandoSesion(false);
           }
-
           return;
         }
 
         if (data.session?.user) {
           const user = data.session.user;
-
           if (activo) {
             setUsuario({
               nombre:
@@ -72,23 +63,32 @@ export function ProveedorSesion({
                 user.user_metadata?.name ||
                 user.email?.split('@')[0] ||
                 'Usuario',
-
               email: user.email || '',
             });
+          }
+
+          // ✅ 2. CARGAR SOLO LOS FAVORITOS DE ESTE USUARIO
+          const { data: datosFavoritos } = await supabase
+            .from('favoritos')
+            .select('pelicula_id')
+            .eq('user_id', user.id); // 🔒 SOLO LOS SUYOS
+
+          if (datosFavoritos) {
+            setFavoritos(
+              datosFavoritos.map((f: any) => f.pelicula_id)
+            );
           }
         } else {
           if (activo) {
             setUsuario(null);
+            setFavoritos([]);
           }
         }
       } catch (error) {
-        console.error(
-          'Error cargando sesión:',
-          error
-        );
-
+        console.error('Error cargando sesión:', error);
         if (activo) {
           setUsuario(null);
+          setFavoritos([]);
         }
       } finally {
         if (activo) {
@@ -97,37 +97,40 @@ export function ProveedorSesion({
       }
     };
 
-    cargarSesion();
+    cargarTodo();
 
     // ==============================
     // ESCUCHAR CAMBIOS DE SESIÓN
     // ==============================
-
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        if (!activo) return;
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!activo) return;
 
-        if (session?.user) {
-          const user = session.user;
+      if (session?.user) {
+        const user = session.user;
+        setUsuario({
+          nombre:
+            user.user_metadata?.full_name ||
+            user.user_metadata?.name ||
+            user.email?.split('@')[0] ||
+            'Usuario',
+          email: user.email || '',
+        });
 
-          setUsuario({
-            nombre:
-              user.user_metadata?.full_name ||
-              user.user_metadata?.name ||
-              user.email?.split('@')[0] ||
-              'Usuario',
+        // ✅ CARGAR FAVORITOS AL INICIAR SESIÓN
+        const { data: datosFavoritos } = await supabase
+          .from('favoritos')
+          .select('pelicula_id')
+          .eq('user_id', user.id);
 
-            email: user.email || '',
-          });
-        } else {
-          setUsuario(null);
-        }
-
-        setCargandoSesion(false);
+        setFavoritos(datosFavoritos?.map((f: any) => f.pelicula_id) || []);
+      } else {
+        setUsuario(null);
+        setFavoritos([]);
       }
-    );
+      setCargandoSesion(false);
+    });
 
     return () => {
       activo = false;
@@ -136,41 +139,8 @@ export function ProveedorSesion({
   }, []);
 
   // ==============================
-  // CARGAR FAVORITOS
-  // ==============================
-
-  useEffect(() => {
-    try {
-      const favoritosGuardados =
-        localStorage.getItem('mis_favoritos');
-
-      if (favoritosGuardados) {
-        const datos = JSON.parse(
-          favoritosGuardados
-        );
-
-        if (Array.isArray(datos)) {
-          setFavoritos(
-            datos.map(Number).filter(
-              (id) => !Number.isNaN(id)
-            )
-          );
-        }
-      }
-    } catch (error) {
-      console.error(
-        'Error cargando favoritos:',
-        error
-      );
-
-      setFavoritos([]);
-    }
-  }, []);
-
-  // ==============================
   // INICIAR SESIÓN
   // ==============================
-
   const iniciarSesion = (datos: Usuario) => {
     setUsuario(datos);
     setCargandoSesion(false);
@@ -179,64 +149,52 @@ export function ProveedorSesion({
   // ==============================
   // CERRAR SESIÓN
   // ==============================
-
   const cerrarSesion = async () => {
-    const { error } =
-      await supabase.auth.signOut();
-
+    const { error } = await supabase.auth.signOut();
     if (error) {
-      console.error(
-        'Error al cerrar sesión:',
-        error
-      );
-
+      console.error('Error al cerrar sesión:', error);
       return;
     }
-
     setUsuario(null);
+    setFavoritos([]);
   };
 
   // ==============================
-  // AGREGAR / QUITAR FAVORITO
+  // AGREGAR / QUITAR FAVORITO → GUARDAR EN SUPABASE
   // ==============================
+  const alternarFavorito = async (idPelicula: number) => {
+    if (!usuario) return;
 
-  const alternarFavorito = (
-    idPelicula: number
-  ) => {
-    if (!usuario) {
-      return;
+    // Obtener el ID real del usuario desde Supabase
+    const { data: { session } } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+    if (!userId) return;
+
+    const yaEsFavorito = favoritos.includes(idPelicula);
+
+    if (yaEsFavorito) {
+      // ❌ QUITAR DE FAVORITOS
+      await supabase
+        .from('favoritos')
+        .delete()
+        .eq('user_id', userId)
+        .eq('pelicula_id', idPelicula);
+
+      setFavoritos((prev) => prev.filter((id) => id !== idPelicula));
+    } else {
+      // ✅ AGREGAR A FAVORITOS
+      await supabase
+        .from('favoritos')
+        .insert({ user_id: userId, pelicula_id: idPelicula });
+
+      setFavoritos((prev) => [...prev, idPelicula]);
     }
-
-    setFavoritos((prev) => {
-      let nuevosFavoritos: number[];
-
-      if (prev.includes(idPelicula)) {
-        nuevosFavoritos = prev.filter(
-          (id) => id !== idPelicula
-        );
-      } else {
-        nuevosFavoritos = [
-          ...prev,
-          idPelicula,
-        ];
-      }
-
-      localStorage.setItem(
-        'mis_favoritos',
-        JSON.stringify(nuevosFavoritos)
-      );
-
-      return nuevosFavoritos;
-    });
   };
 
   // ==============================
   // COMPROBAR FAVORITO
   // ==============================
-
-  const esFavorito = (
-    idPelicula: number
-  ) => {
+  const esFavorito = (idPelicula: number) => {
     return favoritos.includes(idPelicula);
   };
 
@@ -260,15 +218,12 @@ export function ProveedorSesion({
 // ==============================
 // HOOK DE SESIÓN
 // ==============================
-
 export function useSesion() {
   const contexto = useContext(Contexto);
-
   if (!contexto) {
     throw new Error(
       'useSesion debe utilizarse dentro de ProveedorSesion'
     );
   }
-
   return contexto;
 }
