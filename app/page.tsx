@@ -18,15 +18,12 @@ export default function HomePage() {
     try {
       const { data: { session } } = await supabase.auth.getSession()
       setUsuario(session?.user ?? null)
-
-      // ✅ OBTENER EL ROL DESDE LA TABLA profiles
       if (session?.user?.id) {
         const { data } = await supabase
           .from('profiles')
           .select('role')
           .eq('id', session.user.id)
           .single()
-        
         setRolUsuario(data?.role || 'usuario')
       }
     } catch (error) {
@@ -36,20 +33,13 @@ export default function HomePage() {
     }
   }
 
-  // =====================================================
-  // CARGANDO
-  // =====================================================
   if (cargando) {
     return (
       <main className="min-h-screen bg-[#07070A] text-white">
         <div className="min-h-[70vh] flex items-center justify-center">
           <div className="text-center">
-            <div className="text-4xl mb-4">
-              🎬
-            </div>
-            <p className="text-white/50">
-              Cargando...
-            </p>
+            <div className="text-4xl mb-4">🎬</div>
+            <p className="text-white/50">Cargando...</p>
           </div>
         </div>
       </main>
@@ -58,9 +48,9 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen bg-[#07070A] text-white">
-      {/* =====================================================
-          HERO
-      ====================================================== */}
+      {/* =================================================
+                          HERO
+      ================================================== */}
       <section className="relative w-full min-h-[460px] flex items-center justify-center overflow-hidden bg-black">
         {/* FONDO */}
         <div
@@ -74,6 +64,7 @@ export default function HomePage() {
         <div className="absolute inset-0 bg-black/70 backdrop-blur-[3px]" />
         {/* DEGRADADO */}
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-black/40" />
+
         {/* CONTENIDO */}
         <div className="relative z-10 text-center px-6 max-w-5xl">
           <p className="text-yellow-400 text-xs md:text-sm font-bold uppercase tracking-[0.3em] mb-4">
@@ -81,7 +72,7 @@ export default function HomePage() {
           </p>
 
           {/* =================================================
-              BIENVENIDA SOLO SIN SESIÓN
+                    BIENVENIDA SOLO SIN SESIÓN
           ================================================== */}
           {!usuario && (
             <>
@@ -96,7 +87,7 @@ export default function HomePage() {
           )}
 
           {/* =================================================
-              SIN SESIÓN — Botones: Crear cuenta / Iniciar sesión
+                SIN SESIÓN — Crear cuenta / Iniciar sesión
           ================================================== */}
           {!usuario && (
             <div className="flex flex-col sm:flex-row justify-center gap-4">
@@ -116,12 +107,11 @@ export default function HomePage() {
           )}
 
           {/* =================================================
-              CON SESIÓN — Buscador + Catálogo + Favoritos
+              CON SESIÓN — Buscador + Catálogo + PELÍCULAS CREADAS + Favoritos
           ================================================== */}
           {usuario && (
             <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-4">
-              
-              {/* BUSCADOR — TODOS lo ven */}
+              {/* BUSCADOR */}
               <form
                 action="/peliculas"
                 method="GET"
@@ -141,7 +131,7 @@ export default function HomePage() {
                 </button>
               </form>
 
-              {/* CATÁLOGO — TODOS lo ven */}
+              {/* 🎬 Catálogo — TODOS lo ven */}
               <Link
                 href="/peliculas"
                 className="border border-white/20 bg-white/10 hover:bg-white/20 text-white font-bold px-7 py-3 rounded-full transition whitespace-nowrap"
@@ -149,7 +139,15 @@ export default function HomePage() {
                 🎬 Catálogo
               </Link>
 
-              {/* FAVORITOS — TODOS lo ven */}
+              {/* ✅ NUEVO: PELÍCULAS CREADAS — AL LADO DE FAVORITOS — TODOS lo ven */}
+              <Link
+                href="/peliculas-creadas"
+                className="border border-white/20 bg-white/10 hover:bg-white/20 text-white font-bold px-7 py-3 rounded-full transition whitespace-nowrap"
+              >
+                📂 Películas Creadas
+              </Link>
+
+              {/* ⭐ Favoritos — TODOS lo ven */}
               <Link
                 href="/favoritos"
                 className="border border-white/20 bg-white/10 hover:bg-white/20 text-white font-bold px-7 py-3 rounded-full transition whitespace-nowrap"
@@ -157,7 +155,7 @@ export default function HomePage() {
                 ⭐ Favoritos
               </Link>
 
-              {/* ✅ AGREGAR PELÍCULA — SOLO ADMINISTRADOR */}
+              {/* ➕ Agregar Película — SOLO ADMINISTRADOR */}
               {rolUsuario === 'administrador' && (
                 <Link
                   href="/nueva-pelicula"
@@ -167,7 +165,7 @@ export default function HomePage() {
                 </Link>
               )}
 
-              {/* ✅ MIS PELÍCULAS CREADAS — SOLO ADMINISTRADOR */}
+              {/* 📂 Mis Películas Creadas — SOLO ADMINISTRADOR */}
               {rolUsuario === 'administrador' && (
                 <Link
                   href="/mis-peliculas-creadas"
@@ -181,9 +179,9 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* =====================================================
-          TENDENCIAS
-      ====================================================== */}
+      {/* =================================================
+                      TENDENCIAS
+      ================================================== */}
       <section className="max-w-7xl mx-auto px-6 md:px-10 py-16">
         <div className="mb-8">
           <p className="text-yellow-400 text-xs font-bold uppercase tracking-[0.25em] mb-2">
@@ -199,9 +197,9 @@ export default function HomePage() {
         <Tendencias />
       </section>
 
-      {/* =====================================================
-          INFORMACIÓN FINAL
-      ====================================================== */}
+      {/* =================================================
+                    INFORMACIÓN FINAL
+      ================================================== */}
       <section className="px-6 md:px-10 pb-20">
         <div className="max-w-7xl mx-auto rounded-3xl border border-white/10 bg-white/[0.03] p-8 md:p-12">
           <p className="text-yellow-400 text-xs font-bold uppercase tracking-[0.25em] mb-3">
@@ -251,12 +249,8 @@ function Tendencias() {
   if (cargando) {
     return (
       <div className="py-12 text-center">
-        <div className="text-4xl mb-4">
-          🎬
-        </div>
-        <p className="text-white/50">
-          Cargando tendencias...
-        </p>
+        <div className="text-4xl mb-4">🎬</div>
+        <p className="text-white/50">Cargando tendencias...</p>
       </div>
     )
   }
@@ -264,12 +258,8 @@ function Tendencias() {
   if (peliculas.length === 0) {
     return (
       <div className="py-12 text-center">
-        <div className="text-5xl mb-4">
-          🎬
-        </div>
-        <p className="text-white/50">
-          No se pudieron cargar las películas.
-        </p>
+        <div className="text-5xl mb-4">🎬</div>
+        <p className="text-white/50">No se pudieron cargar las películas.</p>
       </div>
     )
   }
@@ -283,7 +273,6 @@ function Tendencias() {
           className="group"
         >
           <article className="overflow-hidden rounded-2xl bg-[#111116] border border-white/5 hover:border-yellow-400/30 hover:-translate-y-2 transition-all duration-500">
-            
             {/* POSTER */}
             <div className="relative aspect-[2/3] overflow-hidden bg-zinc-900">
               <img
@@ -291,13 +280,11 @@ function Tendencias() {
                 alt={peli.title || 'Película'}
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
               />
-              
               {/* CALIFICACIÓN */}
               <div className="absolute top-2 right-2 bg-black/75 backdrop-blur-md px-2 py-1 rounded-lg text-[11px] font-bold">
                 ⭐ {peli.vote_average?.toFixed(1) || 'N/A'}
               </div>
             </div>
-
             {/* INFORMACIÓN */}
             <div className="p-3">
               <h3 className="font-bold text-sm truncate group-hover:text-yellow-400 transition">
