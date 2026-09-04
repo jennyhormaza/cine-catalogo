@@ -1,5 +1,4 @@
 'use client';
-
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
@@ -28,13 +27,17 @@ export default function CrearPeliculaPage() {
   async function guardarPelicula(e: React.FormEvent) {
     e.preventDefault();
 
+    // ✅ OBTENER USUARIO ACTUAL
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { alert('⚠️ Inicia sesión primero'); return; }
+    if (!user) { 
+      alert('⚠️ Inicia sesión primero'); 
+      return; 
+    }
 
     setSubiendo(true);
-    let rutaImagen = null;
+    let rutaImagen: string | null = null;
 
-    // ✅ SUBE LA IMAGEN A LA NUBE DE SUPABASE AUTOMÁTICAMENTE
+    // ✅ SUBE LA IMAGEN A SUPABASE
     if (archivoImagen) {
       const nombreUnico = `${Date.now()}-${archivoImagen.name}`;
       const { error: errorSubida } = await supabase
@@ -49,35 +52,40 @@ export default function CrearPeliculaPage() {
         return;
       }
 
-      // ✅ OBTIENE LA DIRECCIÓN PÚBLICA DE LA IMAGEN
+      // ✅ OBTENER ENLACE PÚBLICO DE LA IMAGEN
       const { data: { publicUrl } } = supabase
         .storage
         .from('imagenes-peliculas')
         .getPublicUrl(nombreUnico);
-
+      
       rutaImagen = publicUrl;
     }
 
-    // ✅ GUARDA LA PELÍCULA CON LA DIRECCIÓN DE LA IMAGEN
+    // ✅ GUARDAR PELÍCULA CON QUIÉN LA CREÓ
     const { error } = await supabase.from('movies').insert([{
       titulo: form.titulo,
       descripcion: form.descripcion,
       "año": form.año ? parseInt(form.año) : null,
       "género": form.género,
       imagen: rutaImagen,
-      user_id: user.id
+      user_id: user.id // ✅ CLAVE: GUARDA QUIÉN LA CREÓ
     }]);
 
     setSubiendo(false);
 
-    if (error) alert('❌ Error: ' + error.message);
-    else { alert('✅ Película guardada'); router.push('/mis-peliculas-creadas'); }
+    if (error) {
+      alert('❌ Error: ' + error.message);
+    } else {
+      alert('✅ Película guardada correctamente');
+      router.push('/mis-peliculas'); // ✅ VA A TUS PELÍCULAS CREADAS
+    }
   }
 
   return (
     <main className="min-h-screen bg-[#07070A] text-white p-6 md:p-10">
       <div className="max-w-2xl mx-auto">
         <h1 className="text-3xl font-bold mb-8">➕ Crear Película</h1>
+        
         <form onSubmit={guardarPelicula} className="space-y-4">
           <div>
             <label className="block mb-2 font-semibold">Título *</label>
@@ -85,28 +93,30 @@ export default function CrearPeliculaPage() {
               type="text" 
               required 
               value={form.titulo} 
-              onChange={(e)=>setForm({...form,titulo:e.target.value})}
+              onChange={(e) => setForm({...form, titulo: e.target.value})}
               className="w-full px-4 py-3 bg-gray-800 rounded-lg border border-gray-700 focus:border-yellow-400 outline-none" 
               placeholder="Nombre de la película"
             />
           </div>
+
           <div>
             <label className="block mb-2 font-semibold">Descripción</label>
             <textarea 
               value={form.descripcion} 
-              onChange={(e)=>setForm({...form,descripcion:e.target.value})}
+              onChange={(e) => setForm({...form, descripcion: e.target.value})}
               className="w-full px-4 py-3 bg-gray-800 rounded-lg border border-gray-700 focus:border-yellow-400 outline-none" 
               rows={4} 
               placeholder="Breve descripción..."
             />
           </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block mb-2 font-semibold">Año</label>
               <input 
                 type="text" 
                 value={form.año} 
-                onChange={(e)=>setForm({...form,año:e.target.value})}
+                onChange={(e) => setForm({...form, año: e.target.value})}
                 className="w-full px-4 py-3 bg-gray-800 rounded-lg border border-gray-700 focus:border-yellow-400 outline-none" 
                 placeholder="2026"
               />
@@ -116,7 +126,7 @@ export default function CrearPeliculaPage() {
               <input 
                 type="text" 
                 value={form.género} 
-                onChange={(e)=>setForm({...form,género:e.target.value})}
+                onChange={(e) => setForm({...form, género: e.target.value})}
                 className="w-full px-4 py-3 bg-gray-800 rounded-lg border border-gray-700 focus:border-yellow-400 outline-none" 
                 placeholder="Acción / Comedia"
               />

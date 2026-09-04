@@ -1,68 +1,68 @@
 'use client';
-
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 
-type PeliculaCreada = {
+type Pelicula = {
   id: string;
   titulo: string;
   descripcion: string;
   "año": number | null;
-  "género": string;
+  "género": string | null;
   imagen: string | null;
+  user_id: string;
 };
 
 export default function MisPeliculasCreadasPage() {
-  const [peliculas, setPeliculas] = useState<PeliculaCreada[]>([]);
+  const [peliculas, setPeliculas] = useState<Pelicula[]>([]);
   const [cargando, setCargando] = useState(true);
-  const router = useRouter();
 
   useEffect(() => {
-    verificarSesion();
+    cargarPeliculas();
   }, []);
 
-  async function verificarSesion() {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      router.push('/login');
-      return;
+  async function cargarPeliculas() {
+    try {
+      // ✅ OBTENER USUARIO ACTUAL
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        alert('⚠️ Inicia sesión primero');
+        setCargando(false);
+        return;
+      }
+
+      // ✅ SOLO TUS PELÍCULAS — FILTRADAS POR TU USUARIO
+      const { data, error } = await supabase
+        .from('movies')
+        .select('*')
+        .eq('user_id', user.id) // 👈 SOLO LAS TUYAS
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('❌ Error:', error);
+        alert('❌ Error al cargar: ' + error.message);
+      } else {
+        setPeliculas(data || []);
+      }
+    } catch (err) {
+      console.error('❌ Error:', err);
+    } finally {
+      setCargando(false);
     }
-    cargarMisPeliculas();
   }
 
-  async function cargarMisPeliculas() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data, error } = await supabase
-      .from('movies')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('❌ Error:', error);
-    } else {
-      setPeliculas(data || []);
-    }
-    setCargando(false);
-  }
-
-  async function eliminarPelicula(id: string) {
-    if (!confirm('¿Seguro que quieres ELIMINAR esta película?')) return;
+  const eliminar = async (id: string) => {
+    if (!confirm('¿Eliminar esta película?')) return;
     const { error } = await supabase.from('movies').delete().eq('id', id);
     if (error) alert('❌ No se pudo eliminar');
-    else { alert('✅ Película eliminada'); cargarMisPeliculas(); }
-  }
+    else cargarPeliculas();
+  };
 
   if (cargando) {
     return (
-      <main className="min-h-screen bg-[#07070A] text-white p-6 md:p-10">
-        <div className="text-center py-20">
-          <p className="text-xl">Cargando...</p>
-        </div>
+      <main className="min-h-screen bg-[#07070A] text-white flex items-center justify-center">
+        <p className="text-xl">Cargando...</p>
       </main>
     );
   }
@@ -70,59 +70,57 @@ export default function MisPeliculasCreadasPage() {
   return (
     <main className="min-h-screen bg-[#07070A] text-white p-6 md:p-10">
       <div className="max-w-6xl mx-auto">
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">📂 Mis Películas Creadas</h1>
-            <p className="text-gray-400 mt-1">Tus películas — {peliculas.length} en total</p>
-          </div>
-          <Link 
-            href="/" 
-            className="bg-gray-700 hover:bg-gray-600 text-white font-bold px-5 py-2 rounded-lg transition flex items-center gap-2"
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold">🎬 Mis Películas Creadas</h1>
+          <Link
+            href="/nueva-pelicula"
+            className="bg-yellow-500 hover:bg-yellow-400 text-black font-bold px-5 py-2 rounded-lg transition"
           >
-            ← Regresar
+            + Crear Película
           </Link>
         </div>
 
         {peliculas.length === 0 ? (
           <div className="text-center py-24">
             <div className="text-6xl mb-6">🎬</div>
-            <h2 className="text-2xl font-bold mb-2">Aún no has creado ninguna película</h2>
-            <p className="text-gray-400">No hay películas para mostrar</p>
+            <h2 className="text-2xl font-bold mb-2">No has creado ninguna película</h2>
+            <p className="text-gray-400 mb-6">Crea tu primera película aquí</p>
+            <Link
+              href="/nueva-pelicula"
+              className="inline-block bg-yellow-500 text-black font-bold px-6 py-3 rounded-lg"
+            >
+              + Crear Película
+            </Link>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {peliculas.map((p) => (
               <div key={p.id} className="bg-gray-900 rounded-xl overflow-hidden border border-gray-800">
-                
-                {/* ✅ IMAGEN DESDE LA NUBE — LA VE TODO EL MUNDO */}
+                {/* ✅ IMAGEN */}
                 {p.imagen && p.imagen.startsWith('http') ? (
-                  <img 
-                    src={p.imagen} 
-                    alt={p.titulo} 
-                    className="w-full h-52 object-cover"
-                  />
+                  <img src={p.imagen} alt={p.titulo} className="w-full h-48 object-cover" />
                 ) : (
-                  <div className="w-full h-52 bg-gray-800 flex items-center justify-center text-5xl">🎬</div>
+                  <div className="w-full h-48 bg-gray-800 flex items-center justify-center text-4xl">🎬</div>
                 )}
 
-                <div className="p-5">
-                  <h3 className="text-xl font-bold mb-1">{p.titulo}</h3>
-                  <p className="text-sm text-yellow-400 mb-3">
-                    {p["año"]} {p["género"] && `• ${p["género"]}`}
+                <div className="p-4">
+                  <h3 className="font-bold text-lg">{p.titulo}</h3>
+                  <p className="text-sm text-yellow-400">
+                    {p.año} {p.género && `• ${p.género}`}
                   </p>
-                  <p className="text-sm text-gray-300 line-clamp-2 mb-5">
-                    {p.descripcion || 'Sin descripción'}
-                  </p>
-                  <div className="flex gap-3">
+                  <p className="text-sm text-gray-300 mt-2 line-clamp-2">{p.descripcion}</p>
+
+                  {/* ✅ BOTONES: Editar y Eliminar SOLO aparecen aquí */}
+                  <div className="mt-3 flex gap-3">
                     <Link
                       href={`/editar-pelicula/${p.id}`}
-                      className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded-lg transition text-center block"
+                      className="text-blue-400 text-sm hover:text-blue-300"
                     >
                       ✏️ Editar
                     </Link>
                     <button
-                      onClick={() => eliminarPelicula(p.id)}
-                      className="flex-1 bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white font-bold py-2 rounded-lg transition"
+                      onClick={() => eliminar(p.id)}
+                      className="text-red-400 text-sm hover:text-red-300"
                     >
                       🗑️ Eliminar
                     </button>

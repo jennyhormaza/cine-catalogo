@@ -15,12 +15,12 @@ interface Usuario {
 
 interface ContextoSesion {
   usuario: Usuario | null;
-  favoritos: number[];
+  favoritos: (number | string)[]; // ✅ ACEPTA NÚMERO Y TEXTO
   cargandoSesion: boolean;
   iniciarSesion: (datos: Usuario) => void;
   cerrarSesion: () => void;
-  alternarFavorito: (idPelicula: number) => void;
-  esFavorito: (idPelicula: number) => boolean;
+  alternarFavorito: (idPelicula: number | string) => Promise<void>; // ✅ AMBOS TIPOS
+  esFavorito: (idPelicula: number | string) => boolean; // ✅ AMBOS TIPOS
 }
 
 const Contexto = createContext<ContextoSesion | undefined>(undefined);
@@ -31,7 +31,7 @@ export function ProveedorSesion({
   children: ReactNode;
 }) {
   const [usuario, setUsuario] = useState<Usuario | null>(null);
-  const [favoritos, setFavoritos] = useState<number[]>([]);
+  const [favoritos, setFavoritos] = useState<(number | string)[]>([]); // ✅ AMBOS
   const [cargandoSesion, setCargandoSesion] = useState(true);
 
   // ==============================
@@ -39,7 +39,6 @@ export function ProveedorSesion({
   // ==============================
   useEffect(() => {
     let activo = true;
-
     const cargarTodo = async () => {
       try {
         // 1. CARGAR SESIÓN
@@ -75,7 +74,7 @@ export function ProveedorSesion({
 
           if (datosFavoritos) {
             setFavoritos(
-              datosFavoritos.map((f: any) => f.pelicula_id)
+              datosFavoritos.map((f: any) => f.pelicula_id) // ✅ GUARDA COMO VENGA (número o texto)
             );
           }
         } else {
@@ -162,15 +161,17 @@ export function ProveedorSesion({
   // ==============================
   // AGREGAR / QUITAR FAVORITO → GUARDAR EN SUPABASE
   // ==============================
-  const alternarFavorito = async (idPelicula: number) => {
+  const alternarFavorito = async (idPelicula: number | string) => {
     if (!usuario) return;
+    const idComoTexto = String(idPelicula); // ✅ CONVERTIMOS TODO A TEXTO
 
     // Obtener el ID real del usuario desde Supabase
     const { data: { session } } = await supabase.auth.getSession();
     const userId = session?.user?.id;
     if (!userId) return;
 
-    const yaEsFavorito = favoritos.includes(idPelicula);
+    // ✅ COMPARAMOS COMO TEXTO PARA QUE NO FALLE
+    const yaEsFavorito = favoritos.some(id => String(id) === idComoTexto);
 
     if (yaEsFavorito) {
       // ❌ QUITAR DE FAVORITOS
@@ -178,14 +179,14 @@ export function ProveedorSesion({
         .from('favoritos')
         .delete()
         .eq('user_id', userId)
-        .eq('pelicula_id', idPelicula);
+        .eq('pelicula_id', idComoTexto); // ✅ TEXTO
 
-      setFavoritos((prev) => prev.filter((id) => id !== idPelicula));
+      setFavoritos((prev) => prev.filter(id => String(id) !== idComoTexto));
     } else {
       // ✅ AGREGAR A FAVORITOS
       await supabase
         .from('favoritos')
-        .insert({ user_id: userId, pelicula_id: idPelicula });
+        .insert({ user_id: userId, pelicula_id: idComoTexto }); // ✅ TEXTO
 
       setFavoritos((prev) => [...prev, idPelicula]);
     }
@@ -194,8 +195,9 @@ export function ProveedorSesion({
   // ==============================
   // COMPROBAR FAVORITO
   // ==============================
-  const esFavorito = (idPelicula: number) => {
-    return favoritos.includes(idPelicula);
+  const esFavorito = (idPelicula: number | string) => {
+    const idComoTexto = String(idPelicula);
+    return favoritos.some(id => String(id) === idComoTexto); // ✅ COMPARA COMO TEXTO
   };
 
   return (

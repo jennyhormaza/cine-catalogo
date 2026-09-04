@@ -50,7 +50,7 @@ export default function PeliculasCreadasPage() {
       <div className="max-w-6xl mx-auto">
         <Link 
           href="/" 
-          className="text-yellow-400 mb-6 inline-block"
+          className="text-yellow-400 mb-6 inline-block hover:text-yellow-300 transition"
         >
           ← Regresar
         </Link>
@@ -68,7 +68,7 @@ export default function PeliculasCreadasPage() {
             {peliculas.map((p) => (
               <div key={p.id} className="bg-gray-900 rounded-xl overflow-hidden border border-gray-800">
                 
-                {/* ✅ IMAGEN — EXACTAMENTE IGUAL QUE EN TU PÁGINA */}
+                {/* ✅ IMAGEN — SE MUESTRA SI EXISTE */}
                 {p.imagen && p.imagen.startsWith('http') ? (
                   <img 
                     src={p.imagen} 
@@ -89,7 +89,9 @@ export default function PeliculasCreadasPage() {
                   </p>
                   
                   {/* ✅ BOTÓN DE FAVORITOS — TODOS PUEDEN GUARDAR */}
-<BotonFavorito peliculaId={Number(p.id)} />                </div>
+                  {/* ⚠️ NOTA: BotonFavorito espera un ID de TMDB (número), aquí usamos el ID de Supabase convertido */}
+                  <BotonFavorito peliculaId={p.id} />
+                </div>
               </div>
             ))}
           </div>

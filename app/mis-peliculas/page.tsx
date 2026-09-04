@@ -1,5 +1,4 @@
 'use client';
-
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
@@ -9,9 +8,10 @@ type Pelicula = {
   id: string;
   titulo: string;
   descripcion: string;
-  anio: number | null;
-  genero: string | null;
-  imagen_url: string | null;
+  "año": number | null;
+  "género": string | null;
+  imagen: string | null;
+  user_id: string;
 };
 
 export default function MisPeliculasPage() {
@@ -21,13 +21,13 @@ export default function MisPeliculasPage() {
 
   useEffect(() => {
     verificarSesion();
-  }, [router]);
+  }, []);
 
   // ✅ PROTECCIÓN: Si no hay sesión → mandar a Login
   const verificarSesion = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      router.push('/login'); // 🔴 SIN CUENTA → VA A INICIAR SESIÓN
+      router.push('/login');
       return;
     }
     cargarPeliculas();
@@ -37,6 +37,7 @@ export default function MisPeliculasPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    // ✅ SOLO TUS PELÍCULAS: filtra por tu user_id
     const { data } = await supabase
       .from('movies')
       .select('*')
@@ -49,7 +50,8 @@ export default function MisPeliculasPage() {
 
   const eliminar = async (id: string) => {
     if (!confirm('¿Eliminar esta película?')) return;
-    await supabase.from('movies').delete().eq('id', id);
+    const { error } = await supabase.from('movies').delete().eq('id', id);
+    if (error) alert('❌ No se pudo eliminar: ' + error.message);
     cargarPeliculas();
   };
 
@@ -82,23 +84,35 @@ export default function MisPeliculasPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {peliculas.map((p) => (
               <div key={p.id} className="bg-gray-900 rounded-xl overflow-hidden border border-gray-800">
-                {p.imagen_url ? (
-                  <img src={p.imagen_url} alt={p.titulo} className="w-full h-48 object-cover" />
+                {/* ✅ IMAGEN: usa el nombre correcto "imagen" NO "imagen_url" */}
+                {p.imagen ? (
+                  <img src={p.imagen} alt={p.titulo} className="w-full h-48 object-cover" />
                 ) : (
                   <div className="w-full h-48 bg-gray-800 flex items-center justify-center text-4xl">🎬</div>
                 )}
+
                 <div className="p-4">
                   <h3 className="font-bold text-lg">{p.titulo}</h3>
                   <p className="text-sm text-gray-400">
-                    {p.anio} {p.genero && `• ${p.genero}`}
+                    {p.año} {p.género && `• ${p.género}`}
                   </p>
                   <p className="text-sm text-gray-300 mt-2 line-clamp-2">{p.descripcion}</p>
-                  <button
-                    onClick={() => eliminar(p.id)}
-                    className="mt-3 text-red-400 text-sm hover:text-red-300"
-                  >
-                    🗑️ Eliminar
-                  </button>
+
+                  {/* ✅ BOTONES: Editar y Eliminar SOLO aparecen aquí en TUS películas */}
+                  <div className="mt-3 flex gap-3">
+                    <Link
+                      href={`/editar-pelicula/${p.id}`}
+                      className="text-blue-400 text-sm hover:text-blue-300"
+                    >
+                      ✏️ Editar
+                    </Link>
+                    <button
+                      onClick={() => eliminar(p.id)}
+                      className="text-red-400 text-sm hover:text-red-300"
+                    >
+                      🗑️ Eliminar
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}

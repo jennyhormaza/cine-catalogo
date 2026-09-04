@@ -1,5 +1,4 @@
 'use client';
-
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -15,7 +14,6 @@ export default function LoginPage() {
     e.preventDefault();
     setMensaje('Entrando...');
 
-    // ✅ LÍNEA CORREGIDA
     const { error } = await supabase.auth.signInWithPassword({
       email: correo,
       password: clave
@@ -25,6 +23,7 @@ export default function LoginPage() {
       setMensaje('❌ Error: ' + error.message);
     } else {
       setMensaje('✅ ¡Bienvenido!');
+      // ✅ CORREGIDO: AHORA VA A LA PÁGINA PRINCIPAL
       setTimeout(() => router.push('/'), 1000);
     }
   };

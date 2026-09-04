@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useSesion } from '@/app/proveedor';
 import { getImageUrl } from '@/lib/tmdb';
 import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
 
 export default function FavoritosPage() {
   const {
@@ -27,18 +28,41 @@ export default function FavoritosPage() {
       const resultados: any[] = [];
 
       for (const id of favoritos) {
+        const idTexto = String(id);
+
         try {
-          const respuesta = await fetch(`/api/peliculas/${id}`);
-          if (!respuesta.ok) {
-            console.error(`❌ Error cargando película ${id}`);
+          // ✅ PRIMERO: BUSCAR SI ES UNA PELÍCULA CREADA EN SUPABASE
+          const { data: peliculaCreada, error } = await supabase
+            .from('movies')
+            .select('id, titulo, descripcion, año, género, imagen')
+            .eq('id', idTexto)
+            .limit(1)
+            .single();
+
+          // ✅ SI LA ENCONTRÓ → LA AGREGAMOS
+          if (!error && peliculaCreada) {
+            resultados.push({
+              id: peliculaCreada.id,
+              title: peliculaCreada.titulo,
+              poster_path: peliculaCreada.imagen,
+              release_date: peliculaCreada.año ? `${peliculaCreada.año}-01-01` : '',
+              vote_average: 0,
+              esCreada: true,
+            });
             continue;
           }
+        } catch {
+          // ✅ SI NO ES PELÍCULA CREADA → SEGUIMOS A TMDB
+        }
+
+        // ✅ BUSCAR EN TMDB
+        try {
+          const respuesta = await fetch(`/api/peliculas/${idTexto}`);
+          if (!respuesta.ok) continue;
           const pelicula = await respuesta.json();
-          if (pelicula) {
-            resultados.push(pelicula);
-          }
-        } catch (error) {
-          console.error(`❌ Error cargando película ${id}:`, error);
+          if (pelicula) resultados.push(pelicula);
+        } catch {
+          console.log(`ℹ️ No se encontró: ${idTexto}`);
         }
       }
 
@@ -112,7 +136,7 @@ export default function FavoritosPage() {
               Explora el catálogo y dale ❤️ a las que más te gusten.
             </p>
             <Link
-              href="/peliculas"
+              href="/peliculas-creadas"
               className="inline-block mt-6 bg-[#FBBF24] hover:bg-[#F59E0B] text-black font-bold px-6 py-2.5 rounded-full transition"
             >
               Explorar Películas
@@ -126,18 +150,23 @@ export default function FavoritosPage() {
                 className="relative overflow-hidden rounded-2xl bg-[#111116] border border-white/5 hover:border-yellow-400/30 transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:shadow-black/50"
               >
                 <Link
-                  href={`/peliculas/${peli.id}`}
+                  href={peli.esCreada ? '/peliculas-creadas' : `/peliculas/${peli.id}`}
                   className="group block"
                 >
                   <div className="relative aspect-[2/3] overflow-hidden bg-zinc-900">
-                    <img
-                      src={getImageUrl(peli.poster_path)}
-                      alt={peli.title || 'Película'}
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                    />
+                    {/* ✅ SI TIENE IMAGEN LA MUESTRA, SI NO MUESTRA ÍCONO */}
+                    {peli.poster_path ? (
+                      <img
+                        src={peli.poster_path.startsWith('http') ? peli.poster_path : getImageUrl(peli.poster_path)}
+                        alt={peli.title || 'Película'}
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-6xl">🎬</div>
+                    )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-80" />
                     <div className="absolute top-3 right-3 px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-md text-xs font-bold">
-                      ⭐ {peli.vote_average?.toFixed(1) || 'N/A'}
+                      {peli.esCreada ? '✨ Creada' : `⭐ ${peli.vote_average?.toFixed(1) || 'N/A'}`}
                     </div>
                   </div>
                   <div className="p-4 pr-14">
@@ -153,7 +182,7 @@ export default function FavoritosPage() {
                 {/* QUITAR DE FAVORITOS */}
                 <button
                   type="button"
-                  onClick={() => alternarFavorito(Number(peli.id))}
+                  onClick={() => alternarFavorito(peli.id)}
                   className="absolute bottom-4 right-4 w-9 h-9 rounded-full bg-red-500/20 border border-red-500/20 text-red-400 hover:bg-red-500 hover:text-white transition"
                   title="Quitar de favoritos"
                 >

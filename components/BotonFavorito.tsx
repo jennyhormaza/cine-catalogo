@@ -4,7 +4,7 @@ import { useSesion } from '@/app/proveedor';
 export default function BotonFavorito({
   peliculaId,
 }: {
-  peliculaId: number;
+  peliculaId: number | string; // ✅ ACEPTA NÚMERO Y TEXTO
 }) {
   const {
     usuario,
@@ -12,7 +12,9 @@ export default function BotonFavorito({
     alternarFavorito,
   } = useSesion();
 
-  const esFavorito = favoritos.includes(peliculaId);
+  // ✅ COMPARAMOS COMO TEXTO PARA QUE NO FALLE
+  const idTexto = String(peliculaId);
+  const esFavorito = favoritos.some(id => String(id) === idTexto);
 
   async function manejarFavorito() {
     // ✅ Si NO hay sesión → llevar a iniciar sesión
@@ -20,8 +22,8 @@ export default function BotonFavorito({
       window.location.href = '/login';
       return;
     }
-    // ✅ Si hay sesión → agregar o quitar de favoritos
-    await alternarFavorito(peliculaId);
+    // ✅ Enviamos SIEMPRE COMO TEXTO para que guarde TODO tipo de ID
+    await alternarFavorito(idTexto as any);
   }
 
   return (
