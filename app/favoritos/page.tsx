@@ -34,18 +34,18 @@ export default function FavoritosPage() {
           // ✅ PRIMERO: BUSCAR SI ES UNA PELÍCULA CREADA EN SUPABASE
           const { data: peliculaCreada, error } = await supabase
             .from('movies')
-            .select('id, titulo, descripcion, año, género, imagen')
+            .select('id, titulo, descripcion, "año", "género", imagen') // ✅ Con comillas por las tildes
             .eq('id', idTexto)
             .limit(1)
-            .single();
+            .single() as any; // ✅ Evita que TypeScript se queje
 
           // ✅ SI LA ENCONTRÓ → LA AGREGAMOS
           if (!error && peliculaCreada) {
             resultados.push({
               id: peliculaCreada.id,
               title: peliculaCreada.titulo,
-              poster_path: peliculaCreada.imagen,
-              release_date: peliculaCreada.año ? `${peliculaCreada.año}-01-01` : '',
+              poster_path: peliculaCreada.imagen, // ✅ El campo se llama "imagen"
+              release_date: peliculaCreada['año'] ? `${peliculaCreada['año']}-01-01` : '', // ✅ Con corchetes por la tilde
               vote_average: 0,
               esCreada: true,
             });
